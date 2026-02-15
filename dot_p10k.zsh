@@ -1724,8 +1724,23 @@
   # Custom prefix.
   # typeset -g POWERLEVEL9K_TIME_PREFIX='%fat '
 
+  # Toggle for showing full home path in `dir` segment.
+  typeset -gi P10K_SHOW_FULL_HOME_PATH=0
+
+  # Toggle compact/full display for home paths in the prompt.
+  function p10k_toggle_full_home_path() {
+    emulate -L zsh
+    (( P10K_SHOW_FULL_HOME_PATH = !P10K_SHOW_FULL_HOME_PATH ))
+    if zle; then
+      zle reset-prompt
+    fi
+  }
+  zle -N p10k_toggle_full_home_path
+  # Ctrl+X Ctrl+P
+  bindkey '^X^P' p10k_toggle_full_home_path
+
   # Compact deep home paths into ~/.../<previous>/<current> while keeping default dir output
-  # everywhere else.
+  # everywhere else. When toggled, show the full home path.
   function p10k_compact_home_dir_content() {
     emulate -L zsh
 
@@ -1763,6 +1778,17 @@
     if [[ -n ${POWERLEVEL9K_DIR_ANCHOR_FOREGROUND-} ]]; then
       anchor_prefix+="%F{${POWERLEVEL9K_DIR_ANCHOR_FOREGROUND}}"
       anchor_suffix+='%f'
+    fi
+
+    if (( P10K_SHOW_FULL_HOME_PATH )); then
+      local -a escaped_parts=("${(@)parts//\%/%%}")
+      local last=${escaped_parts[-1]}
+      local prefix=
+      if (( ${#escaped_parts} > 1 )); then
+        prefix="${(j:/:)escaped_parts[1,-2]}/"
+      fi
+      print -nr -- "~/${prefix}${anchor_prefix}${last}${anchor_suffix}"
+      return
     fi
 
     print -nr -- "~/.../$prev/${anchor_prefix}${curr}${anchor_suffix}"
