@@ -375,7 +375,7 @@
     local repo_root=$VCS_STATUS_WORKDIR
     [[ -n $repo_root && -d $repo_root ]] || return
 
-    local added deleted rel_path file_path line_count
+    local added deleted rel_path file_path numstat
 
     while IFS=$'\t' read -r added deleted _; do
       [[ -n $added && -n $deleted ]] || continue
@@ -396,10 +396,11 @@
     while IFS= read -r -d '' rel_path; do
       file_path="$repo_root/$rel_path"
       [[ -f $file_path && -r $file_path ]] || continue
-      line_count=$(wc -l < "$file_path" 2>/dev/null) || continue
-      line_count=${line_count//[[:space:]]/}
-      [[ $line_count == <-> ]] || continue
-      (( my_git_lines_added += line_count ))
+      numstat=$(git -C "$repo_root" diff --numstat --no-ext-diff --no-index -- /dev/null "$rel_path" 2>/dev/null | head -n 1) || continue
+      [[ -n $numstat ]] || continue
+      IFS=$'\t' read -r added deleted _ <<< "$numstat"
+      [[ $added == <-> ]] && (( my_git_lines_added += added ))
+      [[ $deleted == <-> ]] && (( my_git_lines_deleted += deleted ))
     done < <(git -C "$repo_root" ls-files --others --exclude-standard -z 2>/dev/null)
   }
 
